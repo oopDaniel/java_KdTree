@@ -24,6 +24,8 @@ import edu.princeton.cs.algs4.In;
 public class KdTree {
     private SET<Point2D> points;
     private int size;
+    private Node root;
+
     private static class Node {
         private Point2D p;      // the point
         private RectHV rect;    // the axis-aligned rectangle corresponding to this node
@@ -33,7 +35,7 @@ public class KdTree {
 
         public Node(Point2D p, Shape s, boolean isSmaller) {
             // boolean hasParent  = parent != null;
-            boolean isVertical = s.isVertical;
+            // boolean isVertical = s.isVertical;
             // boolean isVertical = !hasParent || !s.isVertical;
 
             // if (!hasParent) StdOut.println(" has no parent!!" + p);
@@ -48,19 +50,23 @@ public class KdTree {
             // if (hasParent)
             //     parentCord    = isVertical ? parent.p.y() : parent.p.x();
 
-            this.p            = p;
-            this.isVertical   = isVertical;
+            this.p          = p;
+            this.isVertical = s.isVertical;
             // this.rect = new RectHV(s.left, s.bottom, s.right, s.top);
 
-            if (isSmaller) {
-                this.rect = isVertical
-                    ? new RectHV(p.x(), s.bottom, p.x(), s.top)
-                    : new RectHV(s.left, p.y(), s.right, p.y());
-            } else {
-                this.rect = isVertical
-                    ? new RectHV(p.x(), s.bottom, p.x(), s.top)
-                    : new RectHV(s.left, p.y(), s.right, p.y());
-            }
+            this.rect = s.isVertical
+                ? new RectHV(p.x(), s.bottom, p.x(), s.top)
+                : new RectHV(s.left, p.y(), s.right, p.y());
+
+            // if (isSmaller) {
+                // this.rect = s.isVertical
+                //     ? new RectHV(p.x(), s.bottom, p.x(), s.top)
+                //     : new RectHV(s.left, p.y(), s.right, p.y());
+            // } else {
+            //     this.rect = s.isVertical
+            //         ? new RectHV(p.x(), s.bottom, p.x(), s.top)
+            //         : new RectHV(s.left, p.y(), s.right, p.y());
+            // }
 
             // if (s.right - s.left - 1 < 0.000001) this.rect = new RectHV(s.left, s.bottom, s.right, s.top);
             // if (hasParent) {
@@ -80,11 +86,11 @@ public class KdTree {
     }
 
     private static class Shape {
-        double top;
-        double right;
-        double bottom;
-        double left;
-        boolean isVertical;
+        private double top;
+        private double right;
+        private double bottom;
+        private double left;
+        private boolean isVertical;
         public Shape(double top, double right, double bottom, double left, boolean isVertical) {
             this.top        = top;
             this.right      = right;
@@ -94,30 +100,12 @@ public class KdTree {
         }
     }
 
-    // private static class NodeParams {
-    //     private boolean isVertical;
-    //     private boolean isLeft;
-    //     private double min;
-    //     private double max;
-
-    //     public NodeParams(Point2D p, boolean isVertical, boolean isLeft) {
-    //         double targetCord = isVertical ? p.x() : p.y();
-
-    //         this.isVertical = isVertical;
-    //         this.min = isLeft ? 0           : targetCord;
-    //         this.max = isLeft ? targetCord; : 1.0;
-    //     }
-
-    // }
-
-    private Node root;
 
     /**
      * construct an empty set of points
      */
     public KdTree() {
         size = 0;
-        points = new SET<Point2D>();
     }
 
     /**
@@ -144,7 +132,7 @@ public class KdTree {
         if (p == null) throw new NullPointerException();
         if (contains(p)) return;
 
-        Shape s = new Shape(1, 1, 0, 0, true);
+        Shape s = new Shape(1.0, 1.0, 0.0, 0.0, true);
         root = insert(p, root, s, false);
         ++size;
     }
@@ -152,25 +140,24 @@ public class KdTree {
     private Node insert(Point2D p, Node tree, Shape s, boolean shouldGoLeft) {
         if (tree == null) return new Node(p, s, shouldGoLeft);
 
-
-        boolean isSmaller = tree.isVertical
+        boolean isVertical = tree.isVertical;
+        boolean isSmaller  = isVertical
             ? tree.p.x() > p.x()
             : tree.p.y() > p.y();
 
-        if (tree.isVertical) {
-            if (isSmaller) s.right  = Math.min(tree.p.x(), s.right);
-            else           s.left   = Math.max(tree.p.x(), s.left);
+        s.isVertical = !isVertical;
+        if (isVertical) {
+            if (isSmaller) s.right  = tree.p.x();
+            else           s.left   = tree.p.x();
         } else {
-            if (isSmaller) s.top    = Math.min(tree.p.y(), s.top);
-            else           s.bottom = Math.max(tree.p.y(), s.bottom);
+            if (isSmaller) s.top    = tree.p.y();
+            else           s.bottom = tree.p.y();
         }
-        s.isVertical = !tree.isVertical;
 
-        StdOut.println(" compare: " + isSmaller);
 
         // NOTE: No equal cases
-        if (isSmaller) tree.left  = insert(p, tree.left, s, isSmaller);
-        else         tree.right = insert(p, tree.right, s, isSmaller);
+        if (isSmaller) tree.left  = insert(p, tree.left,  s, isSmaller);
+        else           tree.right = insert(p, tree.right, s, isSmaller);
 
         return tree;
     }
@@ -240,11 +227,22 @@ public class KdTree {
      */
     public Iterable<Point2D> range(RectHV rect) {
         if (rect == null) throw new NullPointerException();
+        return search(rect, root);
+    }
 
+    private SET<Point2D> search(RectHV rect, Node tree) {
         SET<Point2D> result = new SET<Point2D>();
-        for (Point2D p : points) {
-            if (rect.contains(p)) result.add(p);
-        }
+
+        if (tree == null) return result;
+
+        if (rect.contains(tree.p)) result.add(tree.p);
+        // Default search the left tree
+        result = result.union(search(rect, tree.left));
+
+        // If intersect, search the right tree
+        if (rect.intersects(tree.rect))
+            result = result.union(search(rect, tree.right));
+
         return result;
     }
 
@@ -254,48 +252,86 @@ public class KdTree {
      * @param <Point2D> target - point to test the nearest
      * @return <Point2D> the nearest point; null if the set is empty
      */
-    public Point2D nearest(Point2D target) {
-        if (target == null) throw new NullPointerException();
+    public Point2D nearest(Point2D p) {
+        if (p == null) throw new NullPointerException();
 
-        double min = Double.MAX_VALUE;
-        Point2D result = null;
-        for (Point2D p : points) {
-            double currDist = target.distanceSquaredTo(p);
-            if (min == Double.MAX_VALUE || currDist < min) {
-                result = p;
-                min    = currDist;
+        if (size == 0) return null;
+        if (root.p.equals(p)) return root.p;
+
+        return nearest(p, root, p.distanceSquaredTo(root.p));
+    }
+
+    private Point2D nearest(Point2D p, Node tree, double min) {
+        Point2D closest = tree.p;
+        Point2D mayCloser;
+        double dist;
+
+        // Could have closer in left tree
+        if (tree.left != null) {
+            dist = p.distanceSquaredTo(tree.left.p);
+            if (dist < min || tree.left.left != null) {
+                mayCloser = nearest(p, tree.left, Math.min(dist, min));
+                if (mayCloser.distanceSquaredTo(p) < dist) closest = mayCloser;
             }
         }
-        return result;
+
+        // Could have closer in right tree
+        if (tree.right != null) {
+            dist = p.distanceSquaredTo(tree.right.p);
+            if (dist < min || !tree.isVertical) {
+                mayCloser = nearest(p, tree.right, Math.min(dist, min));
+                if (mayCloser.distanceSquaredTo(p) < dist) closest = mayCloser;
+                closest = nearest(p, tree.right, Math.min(dist, min));
+            }
+        }
+
+        return closest;
     }
 
     public static void main(String[] args) {
         String filename = args[0];
         In in = new In(filename);
 
-        RectHV rect = new RectHV(0.0, 0.0, 1.0, 1.0);
+        // RectHV rect = new RectHV(0.0, 0.0, 1.0, 1.0);
 
         StdDraw.enableDoubleBuffering();
 
         KdTree kdtree = new KdTree();
-        SET<Point2D> ps = new SET<Point2D>();
+        // SET<Point2D> ps = new SET<Point2D>();
 
-        while (!in.isEmpty()) {
+        // SET<Point2D> result = new SET<Point2D>();
+
+        // while (!in.isEmpty()) {
+        //     double x = in.readDouble();
+        //     double y = in.readDouble();
+
+        //     Point2D p = new Point2D(x, y);
+
+        //     StdOut.printf("%8.6f %8.6f\n", x, y);
+
+        //     if (rect.contains(p)) {
+        //         kdtree.insert(p);
+        //         StdDraw.clear();
+        //         kdtree.draw();
+        //         StdDraw.show();
+        //     }
+        //     StdDraw.pause(200);
+        // }
+
+         while (!in.isEmpty()) {
             double x = in.readDouble();
             double y = in.readDouble();
 
             Point2D p = new Point2D(x, y);
-
-            StdOut.printf("%8.6f %8.6f\n", x, y);
-
-            if (rect.contains(p)) {
-                kdtree.insert(p);
-                StdDraw.clear();
-                kdtree.draw();
-                StdDraw.show();
-            }
-            StdDraw.pause(2500);
+            // kdtree.insert(p);
         }
+
+        RectHV search = new RectHV(0, 0, 0.5, 0.7);
+
+        for (Point2D p : kdtree.range(search)) {
+            StdOut.println(p);
+        }
+
 
         // for (Point2D p : ps) {
         //     StdOut.println(" --- current point: " + p);
@@ -304,7 +340,10 @@ public class KdTree {
         //     StdOut.println(" has " + p + " ? :" + has);
         // }
 
+
+
         StdOut.println(" size " + kdtree.size());
+
 
         // kdtree.draw();
         // StdDraw.show();
