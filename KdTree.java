@@ -22,7 +22,6 @@ import edu.princeton.cs.algs4.In;
 
 
 public class KdTree {
-    private SET<Point2D> points;
     private int size;
     private Node root;
 
@@ -33,55 +32,13 @@ public class KdTree {
         private Node right;        // the right/top subtree
         private boolean isVertical;
 
-        public Node(Point2D p, Shape s, boolean isSmaller) {
-            // boolean hasParent  = parent != null;
-            // boolean isVertical = s.isVertical;
-            // boolean isVertical = !hasParent || !s.isVertical;
-
-            // if (!hasParent) StdOut.println(" has no parent!!" + p);
-            // else {
-            //     StdOut.println(" has parent!!" + p + " and " + parent.p);
-            //     String msg1 = isVertical ? "vertical" : "horizontal";
-            //     String msg2 = isSmaller ? "(smaller) left or bottom" : "(bigger) right or top";
-            //     StdOut.println(msg1 + "\n" + msg2);
-            // }
-            // double cord       = isVertical ? p.x() : p.y();
-            // double parentCord = 0;
-            // if (hasParent)
-            //     parentCord    = isVertical ? parent.p.y() : parent.p.x();
-
+        public Node(Point2D p, Shape s) {
             this.p          = p;
             this.isVertical = s.isVertical;
-            // this.rect = new RectHV(s.left, s.bottom, s.right, s.top);
 
             this.rect = s.isVertical
                 ? new RectHV(p.x(), s.bottom, p.x(), s.top)
                 : new RectHV(s.left, p.y(), s.right, p.y());
-
-            // if (isSmaller) {
-                // this.rect = s.isVertical
-                //     ? new RectHV(p.x(), s.bottom, p.x(), s.top)
-                //     : new RectHV(s.left, p.y(), s.right, p.y());
-            // } else {
-            //     this.rect = s.isVertical
-            //         ? new RectHV(p.x(), s.bottom, p.x(), s.top)
-            //         : new RectHV(s.left, p.y(), s.right, p.y());
-            // }
-
-            // if (s.right - s.left - 1 < 0.000001) this.rect = new RectHV(s.left, s.bottom, s.right, s.top);
-            // if (hasParent) {
-                // if (isSmaller) {
-                //     this.rect = isVertical
-                //         ? new RectHV(p.x(), 0, p.x(), parent.p.y())
-                //         : new RectHV(0, p.y(), parent.p.x(), p.y());
-                // } else {
-                //     this.rect = isVertical
-                //         ? new RectHV(p.x(), parent.p.y(), p.x(), 1)
-                //         : new RectHV(parent.p.x(), p.y(), 1, p.y());
-                // }
-            // } else {
-            //     this.rect = new RectHV(cord, 0, cord, 1.0);
-            // }
         }
     }
 
@@ -138,12 +95,10 @@ public class KdTree {
     }
 
     private Node insert(Point2D p, Node tree, Shape s, boolean shouldGoLeft) {
-        if (tree == null) return new Node(p, s, shouldGoLeft);
+        if (tree == null) return new Node(p, s);
 
         boolean isVertical = tree.isVertical;
-        boolean isSmaller  = isVertical
-            ? tree.p.x() > p.x()
-            : tree.p.y() > p.y();
+        boolean isSmaller  = isSmaller(tree, p);
 
         s.isVertical = !isVertical;
         if (isVertical) {
@@ -170,21 +125,25 @@ public class KdTree {
      */
     public boolean contains(Point2D p) {
         if (p == null) throw new NullPointerException();
-        return find(root, p) != null;
+        return contains(root, p);
     }
 
-    private Node find(Node parent, Point2D p) {
+    private boolean contains(Node parent, Point2D p) {
         Node curr = parent;
 
         while (curr != null) {
-            int cmp = p.compareTo(curr.p);
-
-            if      (cmp < 0) curr = curr.left;
-            else if (cmp > 0) curr = curr.right;
-            else              return curr;
+            if (p.equals(curr.p))   return true;
+            if (isSmaller(curr, p)) curr = curr.left;
+            else                    curr = curr.right;
         }
 
-        return null;
+        return false;
+    }
+
+    private boolean isSmaller(Node parent, Point2D p) {
+        return curr.isVertical
+            ? curr.p.x() > p.x()
+            : curr.p.y() > p.y();
     }
 
     /**
@@ -292,7 +251,7 @@ public class KdTree {
         String filename = args[0];
         In in = new In(filename);
 
-        // RectHV rect = new RectHV(0.0, 0.0, 1.0, 1.0);
+        RectHV rect = new RectHV(0.0, 0.0, 1.0, 1.0);
 
         StdDraw.enableDoubleBuffering();
 
@@ -301,36 +260,36 @@ public class KdTree {
 
         // SET<Point2D> result = new SET<Point2D>();
 
-        // while (!in.isEmpty()) {
-        //     double x = in.readDouble();
-        //     double y = in.readDouble();
-
-        //     Point2D p = new Point2D(x, y);
-
-        //     StdOut.printf("%8.6f %8.6f\n", x, y);
-
-        //     if (rect.contains(p)) {
-        //         kdtree.insert(p);
-        //         StdDraw.clear();
-        //         kdtree.draw();
-        //         StdDraw.show();
-        //     }
-        //     StdDraw.pause(200);
-        // }
-
-         while (!in.isEmpty()) {
+        while (!in.isEmpty()) {
             double x = in.readDouble();
             double y = in.readDouble();
 
             Point2D p = new Point2D(x, y);
-            // kdtree.insert(p);
+
+            StdOut.printf("%8.6f %8.6f\n", x, y);
+
+            if (rect.contains(p)) {
+                kdtree.insert(p);
+                StdDraw.clear();
+                kdtree.draw();
+                StdDraw.show();
+            }
+            StdDraw.pause(200);
         }
 
-        RectHV search = new RectHV(0, 0, 0.5, 0.7);
+        //  while (!in.isEmpty()) {
+        //     double x = in.readDouble();
+        //     double y = in.readDouble();
 
-        for (Point2D p : kdtree.range(search)) {
-            StdOut.println(p);
-        }
+        //     Point2D p = new Point2D(x, y);
+        //     kdtree.insert(p);
+        // }
+
+        // RectHV search = new RectHV(0, 0, 0.5, 0.7);
+
+        // for (Point2D p : kdtree.range(search)) {
+        //     StdOut.println(p);
+        // }
 
 
         // for (Point2D p : ps) {
