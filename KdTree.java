@@ -223,34 +223,46 @@ public class KdTree {
         if (p == null) throw new NullPointerException();
 
         if (size == 0) return null;
-        if (root.p.equals(p)) return root.p;
+        // if (root.p.equals(p)) return root.p;
 
-        return nearest(p, root, p.distanceSquaredTo(root.p));
+        return nearest(p, root, Double.MAX_VALUE);
     }
 
     private Point2D nearest(Point2D p, Node tree, double min) {
-        Point2D closest = tree.p;
+        if (tree == null) return null;
+
+        Point2D closest = null;
         Point2D mayCloser;
-        double dist;
+
+        double dist = p.distanceSquaredTo(tree.p);
+        if (dist < min) {
+            closest = tree.p;
+            min     = dist;
+        }
+
+        boolean isSmaller = isSmaller(tree, p);
+        Node searchNode1 = isSmaller ? tree.left  : tree.right;
+        Node searchNode2 = isSmaller ? tree.right : tree.left;
 
         // Could have closer in left tree
-        if (tree.left != null) {
-            dist = p.distanceSquaredTo(tree.left.p);
-            if (dist < min || tree.left.left != null) {
-                mayCloser = nearest(p, tree.left, Math.min(dist, min));
-                if (mayCloser.distanceSquaredTo(p) < dist) closest = mayCloser;
+        mayCloser = nearest(p, searchNode1, min);
+        if (mayCloser != null) {
+            dist = p.distanceSquaredTo(mayCloser);
+            if (dist < min) {
+                closest = mayCloser;
+                min     = dist;
             }
         }
 
         // Could have closer in right tree
-        if (tree.right != null) {
-            dist = p.distanceSquaredTo(tree.right.p);
-            if (dist < min || !tree.isVertical) {
-                mayCloser = nearest(p, tree.right, Math.min(dist, min));
-                if (mayCloser.distanceSquaredTo(p) < dist) closest = mayCloser;
-                closest = nearest(p, tree.right, Math.min(dist, min));
+        mayCloser = nearest(p, searchNode2, min);
+        if (mayCloser != null) {
+            dist = p.distanceSquaredTo(mayCloser);
+            if (dist < min) {
+                closest = mayCloser;
             }
         }
+
 
         return closest;
     }
