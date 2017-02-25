@@ -140,10 +140,10 @@ public class KdTree {
         return false;
     }
 
-    private boolean isSmaller(Node parent, Point2D p) {
-        return curr.isVertical
-            ? curr.p.x() > p.x()
-            : curr.p.y() > p.y();
+    private boolean isSmaller(Node node, Point2D p) {
+        return node.isVertical
+            ? node.p.x() > p.x()
+            : node.p.y() > p.y();
     }
 
     /**
@@ -186,23 +186,31 @@ public class KdTree {
      */
     public Iterable<Point2D> range(RectHV rect) {
         if (rect == null) throw new NullPointerException();
-        return search(rect, root);
-    }
-
-    private SET<Point2D> search(RectHV rect, Node tree) {
         SET<Point2D> result = new SET<Point2D>();
 
-        if (tree == null) return result;
-
-        if (rect.contains(tree.p)) result.add(tree.p);
-        // Default search the left tree
-        result = result.union(search(rect, tree.left));
-
-        // If intersect, search the right tree
-        if (rect.intersects(tree.rect))
-            result = result.union(search(rect, tree.right));
+        range(rect, root, result, new RectHV(0.0, 0.0, 1.0, 1.0));
 
         return result;
+    }
+
+
+    private void range(RectHV queryRect, Node tree, SET<Point2D> set, RectHV nodeRect) {
+        if (tree == null || !queryRect.intersects(nodeRect)) return;
+
+        if (queryRect.contains(tree.p)) set.add(tree.p);
+
+        RectHV leftRect;
+        RectHV rightRect;
+
+        if (tree.isVertical) {
+            leftRect  = new RectHV(nodeRect.xmin(), nodeRect.ymin(), tree.p.x(), nodeRect.ymax());
+            rightRect = new RectHV(tree.p.x(), nodeRect.ymin(), nodeRect.xmax(), nodeRect.ymax());
+        } else {
+            leftRect  = new RectHV(nodeRect.xmin(), nodeRect.ymin(), nodeRect.xmax(), tree.p.y());
+            rightRect = new RectHV(nodeRect.xmin(), tree.p.y(), nodeRect.xmax(), nodeRect.ymax());
+        }
+        range(queryRect, tree.left,  set, leftRect);
+        range(queryRect, tree.right, set, rightRect);
     }
 
     /**
